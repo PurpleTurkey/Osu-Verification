@@ -1,0 +1,10 @@
+RED = 0xff7575
+ORANGE = 0xffa175
+YELLOW = 0xfffd75
+GREEN = 0x75ff91
+LIGHT_BLUE = 0x75ccff
+BLUE = 0x757aff
+PURPLE = 0xb875ff
+PINK = 0xff75fd
+
+PREFIX = "VRY"
