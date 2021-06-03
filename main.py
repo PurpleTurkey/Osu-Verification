@@ -252,11 +252,12 @@ async def ping(ctx):
 @client.command(pass_context=True)
 async def patchnotes(ctx):
     desc = [
-        "Version - **0.7**",
-        "Last Updated - **6/2/2021**",
-        "\> Long-term database support",
+        "Version - **1.1**",
+        "Last Updated - **6/3/2021**",
+        "\> Reset Verification",
+        "\> Admin dashboard/options",
         "\> Verification system added",
-        "Bot created by Turkey#3157"
+        "Bot created by `Turkey#3157`"
     ]
     embed = discord.Embed(title="Patch Notes", description="\n".join(
         desc), color=PURPLE)
