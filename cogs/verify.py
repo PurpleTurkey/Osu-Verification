@@ -26,6 +26,8 @@ class VerifyCog(commands.Cog):
             table = self.user_table # unlimited cache size may increase speed, but also can be wonky
             Users = Query()
             results = table.search(Users.discord_user == str(ctx.author.id))
+            deletion_delay = 60 # in seconds
+
 
             if results != []: # TODO: or account for if code has not been verified
 
@@ -41,7 +43,10 @@ class VerifyCog(commands.Cog):
                     desc), color=ORANGE)
                     embed.set_footer(text="Requested by " + str(ctx.author.name),
                                 icon_url=ctx.author.avatar_url)
-                    await ctx.send("", embed=embed)
+                    msg = await ctx.send("", embed=embed)
+                    await asyncio.sleep(deletion_delay)
+                    await msg.delete()
+                    await ctx.message.delete()
                     return
 
             # else
@@ -55,8 +60,7 @@ class VerifyCog(commands.Cog):
             desc), color=GREEN)
             embed.set_footer(text="Requested by " + str(ctx.author.name),
                         icon_url=ctx.author.avatar_url)
-            await ctx.send("", embed=embed)
-
+            msg = await ctx.send("", embed=embed)
 
             # Generate code and update database
             code = gen_code()
@@ -67,7 +71,8 @@ class VerifyCog(commands.Cog):
                 "last_code" : code,
                 "last_code_time_sent" : time.time(),
                 "verification_error" : "",
-                "verified_osu_list" : []
+                "verified_osu_list" : [],
+                "auto_server" : str(ctx.message.guild.id)
             }
             table.upsert(user, Users.discord_user == str(ctx.author.id))
 
@@ -88,6 +93,10 @@ class VerifyCog(commands.Cog):
             embed.set_footer(text="Requested by " + str(ctx.author.name),
                         icon_url=ctx.author.avatar_url)
             await ctx.author.send("", embed=embed)
+
+            await asyncio.sleep(deletion_delay)
+            await msg.delete()
+            await ctx.message.delete()
 
     @verify.command(pass_context=True)
     async def reset(self, ctx):
@@ -208,7 +217,7 @@ class VerifyCog(commands.Cog):
                 await ctx.author.edit(nick=curr_user['osu_user'])
                 await ctx.author.send(f"```Your nickname has been changed on {ctx.message.guild.name}```")
             except:
-                await ctx.author.send(f"```Attempted to change your nickname (bots cannot change server admins' nicknames [unless also an admin])```")
+                await ctx.author.send(f"```There was an error in changing your nickname!```")
         if guild_['role'] != None:
             role_id = int(guild_['role'])
             role = get(ctx.message.guild.roles, id=role_id)
@@ -218,7 +227,7 @@ class VerifyCog(commands.Cog):
             except:
                  await ctx.author.send(f"```Attempted to give you a role on {ctx.message.guild.name}, but the server has improperly configured this option.```")
 
-
+        await ctx.message.delete()
 
     @verify.command(pass_context=True)
     async def help(self, ctx):

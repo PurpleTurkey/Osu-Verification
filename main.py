@@ -32,11 +32,11 @@ db = TinyDB(os.path.join(os.path.dirname(os.path.abspath(sys.argv[0])), 'databas
 db_users = db.table('users', cache_size=0)
 db_guilds = db.table('guilds', cache_size=0)
 
-intents = discord.Intents(members=True, guilds=True)
+intents = discord.Intents().all()
 
 PREFIX = config_data['PREFIX']
 DISCORD_TOKEN = config_data['DISCORD_TOKEN']
-client = commands.Bot(command_prefix=PREFIX, description=config_data['STATUS'],chunk_guilds_at_startup=False)
+client = commands.Bot(command_prefix=PREFIX, description=config_data['STATUS'],chunk_guilds_at_startup=False, intents=intents)
 client.remove_command("help")
 
 
@@ -103,19 +103,62 @@ async def review_database():
             # Update user so that verification_error is reset
             user['verification_error'] = ""
             table.upsert(user, Users.discord_user == str(disc_user.id))
-
+    
             if status == "success":
-                desc = [
-                    "```",
-                    "Now that you are verified, in servers that support OsuVerification, use the command",
-                    f"{config_data['PREFIX']}verify server",
-                    "to gain a 'verified' role and nickname",
-                    "```",
-                    "Note: This only works if the discord server has this feature enabled"
-                ]
-                embed = discord.Embed(title="Server Verification", description="\n".join(
-                    desc), color=LIGHT_BLUE)
-                await disc_user.send("", embed=embed)
+                # Now 100% verified
+
+                try:
+                    table = db_guilds
+                    Guilds = Query()
+                    results = table.search(Guilds.id == user['auto_server'])
+                    guild_ = results[0]
+
+                    guild_object = client.get_guild(int(guild_["id"]))
+                    member_object = guild_object.get_member(int(user['discord_user'])) 
+
+                    if guild_['nicknames'] == True:
+                        
+                        try:
+                            await member_object.edit(nick=user['osu_user'])
+                            await member_object.send(f"```Your nickname has been changed on {guild_object.name}```")
+                        except:
+                            await member_object.send(f"```There was an error in changing your nickname!```")
+                    if guild_['role'] != None:
+                        role_id = int(guild_['role'])
+                        role = get(guild_object.roles, id=role_id)
+                        try:
+                            await member_object.add_roles(role)
+                            await member_object.send(f"```You have been given a 'Verified' role on {guild_object.name}```")
+                        except:
+                            await member_object.send(f"```Attempted to give you a role on {guild_object.name}, but the server has improperly configured this option.```")
+
+                    desc = [
+                        "```",
+                        "Now that you are verified, in servers that support OsuVerification, use the command",
+                        f"{config_data['PREFIX']}verify server",
+                        "to gain a 'verified' role and nickname (if not automatically given)",
+                        "```",
+                        "Note: This only works if the discord server has this feature enabled"
+                    ]
+                    embed = discord.Embed(title="Server Verification", description="\n".join(
+                        desc), color=LIGHT_BLUE)
+                    await disc_user.send("", embed=embed)
+
+                    
+                except:
+
+                    desc = [
+                        "```",
+                        "Now that you are verified, in servers that support OsuVerification, use the command",
+                        f"{config_data['PREFIX']}verify server",
+                        "to gain a 'verified' role and nickname",
+                        "```",
+                        "Note: This only works if the discord server has this feature enabled"
+                    ]
+                    embed = discord.Embed(title="Server Verification", description="\n".join(
+                        desc), color=LIGHT_BLUE)
+                    await disc_user.send("", embed=embed)
+
 async def update_status():
     while True:
 
@@ -177,6 +220,36 @@ async def on_guild_join(guild):
             'nicknames' : True
         }
         table.insert(guild_)
+
+@client.event
+async def on_member_join(member):
+
+    table = db_users
+    Users = Query()
+    results = table.search(Users.discord_user == str(member.id))
+
+    if results != []:
+        curr_user = results[0]
+        table = db_guilds
+        Guilds = Query()
+        results = table.search(Guilds.id == str(member.guild.id))
+        guild_ = results[0]
+
+        if guild_['nicknames'] == True:
+            
+            try:
+                await member.edit(nick=curr_user['osu_user'])
+                await member.send(f"```Your nickname has been changed on {member.guild.name}```")
+            except:
+                await member.send(f"```There was an error in changing your nickname!```")
+        if guild_['role'] != None:
+            role_id = int(guild_['role'])
+            role = get(member.guild.roles, id=role_id)
+            try:
+                await member.add_roles(role)
+                await member.send(f"```You have been given a 'Verified' role on {member.guild.name}```")
+            except:
+                 await member.send(f"```Attempted to give you a role on {member.guild.name}, but the server has improperly configured this option.```")
 
 @client.command(pass_context=True)
 async def embedmessage(ctx, val : str = None):
